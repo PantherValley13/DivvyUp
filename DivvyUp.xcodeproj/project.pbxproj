@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2373FDE92E185BA1002F67DC /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 2373FDE82E185BA1002F67DC /* Auth */; };
+		2373FDEB2E185BA1002F67DC /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 2373FDEA2E185BA1002F67DC /* Functions */; };
+		2373FDED2E185BA1002F67DC /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 2373FDEC2E185BA1002F67DC /* PostgREST */; };
+		2373FDEF2E185BA1002F67DC /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 2373FDEE2E185BA1002F67DC /* Realtime */; };
+		2373FDF12E185BA1002F67DC /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 2373FDF02E185BA1002F67DC /* Storage */; };
+		2373FDF42E185C18002F67DC /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 2373FDF32E185C18002F67DC /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2373FD952E185262002F67DC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +61,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2373FDED2E185BA1002F67DC /* PostgREST in Frameworks */,
+				2373FDEB2E185BA1002F67DC /* Functions in Frameworks */,
+				2373FDF42E185C18002F67DC /* Supabase in Frameworks */,
+				2373FDE92E185BA1002F67DC /* Auth in Frameworks */,
+				2373FDF12E185BA1002F67DC /* Storage in Frameworks */,
+				2373FDEF2E185BA1002F67DC /* Realtime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +93,7 @@
 				2373FD892E185261002F67DC /* DivvyUp */,
 				2373FD972E185262002F67DC /* DivvyUpTests */,
 				2373FDA12E185262002F67DC /* DivvyUpUITests */,
+				2373FDF22E185C18002F67DC /* Frameworks */,
 				2373FD882E185261002F67DC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +106,13 @@
 				2373FD9E2E185262002F67DC /* DivvyUpUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		2373FDF22E185C18002F67DC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +135,12 @@
 			);
 			name = DivvyUp;
 			packageProductDependencies = (
+				2373FDE82E185BA1002F67DC /* Auth */,
+				2373FDEA2E185BA1002F67DC /* Functions */,
+				2373FDEC2E185BA1002F67DC /* PostgREST */,
+				2373FDEE2E185BA1002F67DC /* Realtime */,
+				2373FDF02E185BA1002F67DC /* Storage */,
+				2373FDF32E185C18002F67DC /* Supabase */,
 			);
 			productName = DivvyUp;
 			productReference = 2373FD872E185261002F67DC /* DivvyUp.app */;
@@ -195,6 +224,9 @@
 			);
 			mainGroup = 2373FD7E2E185261002F67DC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2373FD882E185261002F67DC /* Products */;
 			projectDirPath = "";
@@ -400,6 +432,8 @@
 				DEVELOPMENT_TEAM = V96KD58D5T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "DivvyUp needs camera access to scan receipts and extract bill items using OCR technology.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "DivvyUp needs photo library access to upload receipt images for bill splitting.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -431,6 +465,8 @@
 				DEVELOPMENT_TEAM = V96KD58D5T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "DivvyUp needs camera access to scan receipts and extract bill items using OCR technology.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "DivvyUp needs photo library access to upload receipt images for bill splitting.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -572,6 +608,50 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2373FDE82E185BA1002F67DC /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		2373FDEA2E185BA1002F67DC /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		2373FDEC2E185BA1002F67DC /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		2373FDEE2E185BA1002F67DC /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		2373FDF02E185BA1002F67DC /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		2373FDF32E185C18002F67DC /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2373FDE72E185BA1002F67DC /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2373FD7F2E185261002F67DC /* Project object */;
 }
