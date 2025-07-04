@@ -258,3 +258,4 @@ struct CameraOCRView: UIViewControllerRepresentable {
         }
     }
 } 
+ 

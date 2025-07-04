@@ -191,7 +191,9 @@ struct ContentView: View {
                 EmptyStateView(
                     icon: "text.viewfinder",
                     title: "No recent scans",
-                    message: "Your recent OCR scans will appear here"
+                    message: "Your recent OCR scans will appear here",
+                    actionTitle: "",
+                    action: {}
                 )
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -474,11 +476,18 @@ struct BillHistoryRowView: View {
     let onLoad: (Bill) -> Void
     let onDelete: (Bill) -> Void
     
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Bill from \(bill.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                    Text("Bill from \(dateFormatter.string(from: bill.date))")
                         .font(.headline)
                     
                     Text("\(bill.items.count) items • \(bill.participants.count) participants")

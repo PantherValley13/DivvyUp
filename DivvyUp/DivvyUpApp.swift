@@ -9,9 +9,41 @@ import SwiftUI
 
 @main
 struct DivvyUpApp: App {
+    @StateObject private var billViewModel = BillViewModel()
+    @State private var showingSettings = false
+    @State private var showingHistory = false
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationView {
+                BillScannerView()
+                    .environmentObject(billViewModel)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                showingHistory = true
+                            } label: {
+                                Image(systemName: "clock.arrow.circlepath")
+                            }
+                        }
+                        
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button {
+                                showingSettings = true
+                            } label: {
+                                Image(systemName: "gear")
+                            }
+                        }
+                    }
+                    .sheet(isPresented: $showingSettings) {
+                        SettingsView()
+                            .environmentObject(billViewModel)
+                    }
+                    .sheet(isPresented: $showingHistory) {
+                        HistoryView()
+                            .environmentObject(billViewModel)
+                    }
+            }
         }
     }
 }

@@ -2,24 +2,48 @@ import SwiftUI
 
 enum Theme {
     // MARK: - Colors
-    static let primary = Color("AccentColor")
-    static let secondary = Color.gray.opacity(0.1)
-    static let success = Color.green
-    static let warning = Color.orange
-    static let error = Color.red
+    static var primary: Color {
+        Color.accentColor
+    }
+    
+    static var secondary: Color {
+        Color(.systemGray6)
+    }
+    
+    static var success: Color {
+        Color.green
+    }
+    
+    static var error: Color {
+        Color.red
+    }
+    
+    static var warning: Color {
+        Color.orange
+    }
     
     // MARK: - Gradients
-    static let primaryGradient = LinearGradient(
-        colors: [primary.opacity(0.8), primary],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var backgroundGradient: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(.systemBackground),
+                Color(.systemGray6)
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
     
-    static let backgroundGradient = LinearGradient(
-        colors: [Color(.systemBackground), Color(.systemBackground).opacity(0.95)],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static func cardGradient(color: Color) -> LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                color.opacity(0.8),
+                color.opacity(0.6)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
     
     // MARK: - Shadows
     struct ShadowStyle {
@@ -48,7 +72,7 @@ enum Theme {
     static let easeAnimation = Animation.easeInOut(duration: 0.2)
     
     // MARK: - Corner Radius
-    static let cornerRadius: CGFloat = 16
+    static let cornerRadius: CGFloat = 12
     static let buttonCornerRadius: CGFloat = 12
     
     // MARK: - Padding
@@ -66,7 +90,7 @@ enum Theme {
                 .background(
                     Group {
                         if isEnabled {
-                            primaryGradient
+                            cardGradient(color: primary).opacity(0.8)
                         } else {
                             Color.gray.opacity(0.3)
                         }

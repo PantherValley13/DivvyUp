@@ -4,15 +4,48 @@ import UniformTypeIdentifiers
 
 // MARK: - Data Models
 
+struct AppSettings: Identifiable, Codable {
+    let id: UUID = UUID()
+    var defaultTipPercentage: Double
+    var defaultTaxPercentage: Double
+    var currencyCode: String
+    var roundingMode: RoundingMode
+    var saveHistory: Bool
+    var defaultParticipants: [Participant]
+    
+    enum RoundingMode: String, Codable {
+        case none
+        case up
+        case down
+        case nearest
+    }
+    
+    init(
+        defaultTipPercentage: Double = 15.0,
+        defaultTaxPercentage: Double = 8.0,
+        currencyCode: String = "USD",
+        roundingMode: RoundingMode = .nearest,
+        saveHistory: Bool = true,
+        defaultParticipants: [Participant] = []
+    ) {
+        self.defaultTipPercentage = defaultTipPercentage
+        self.defaultTaxPercentage = defaultTaxPercentage
+        self.currencyCode = currencyCode
+        self.roundingMode = roundingMode
+        self.saveHistory = saveHistory
+        self.defaultParticipants = defaultParticipants
+    }
+}
+
 struct BillItem: Identifiable, Equatable, Sendable {
     let id: UUID
     var name: String
     var price: Double
     var quantity: Int = 1
-    var assignedTo: [UUID] = [] // Participant IDs
+    var assignedTo: UUID? = nil // Single participant ID
     var isManuallyAssigned: Bool = false
     
-    init(id: UUID = UUID(), name: String, price: Double, quantity: Int = 1, assignedTo: [UUID] = [], isManuallyAssigned: Bool = false) {
+    init(id: UUID = UUID(), name: String, price: Double, quantity: Int = 1, assignedTo: UUID? = nil, isManuallyAssigned: Bool = false) {
         self.id = id
         self.name = name
         self.price = price
@@ -22,8 +55,8 @@ struct BillItem: Identifiable, Equatable, Sendable {
     }
     
     var pricePerPerson: Double {
-        guard !assignedTo.isEmpty else { return 0 }
-        return price / Double(assignedTo.count)
+        guard assignedTo != nil else { return 0 }
+        return price
     }
     
     static func == (lhs: BillItem, rhs: BillItem) -> Bool {
@@ -43,7 +76,7 @@ extension BillItem: Codable {
         name = try container.decode(String.self, forKey: .name)
         price = try container.decode(Double.self, forKey: .price)
         quantity = try container.decodeIfPresent(Int.self, forKey: .quantity) ?? 1
-        assignedTo = try container.decodeIfPresent([UUID].self, forKey: .assignedTo) ?? []
+        assignedTo = try container.decodeIfPresent(UUID.self, forKey: .assignedTo)
         isManuallyAssigned = try container.decodeIfPresent(Bool.self, forKey: .isManuallyAssigned) ?? false
     }
     
@@ -90,44 +123,51 @@ struct Bill: Identifiable, Codable {
     let id: UUID
     var items: [BillItem] = []
     var participants: [Participant] = []
-    var totalAmount: Double = 0.0
     var taxAmount: Double = 0.0
     var tipAmount: Double = 0.0
-    var createdAt: Date = Date()
+    var date: Date = Date()
     
-    init(id: UUID = UUID(), items: [BillItem] = [], participants: [Participant] = [], totalAmount: Double = 0.0, taxAmount: Double = 0.0, tipAmount: Double = 0.0, createdAt: Date = Date()) {
+    init(
+        id: UUID = UUID(),
+        items: [BillItem] = [],
+        participants: [Participant] = [],
+        taxAmount: Double = 0.0,
+        tipAmount: Double = 0.0,
+        date: Date = Date()
+    ) {
         self.id = id
         self.items = items
         self.participants = participants
-        self.totalAmount = totalAmount
         self.taxAmount = taxAmount
         self.tipAmount = tipAmount
-        self.createdAt = createdAt
+        self.date = date
     }
     
     var subtotal: Double {
         items.reduce(0) { $0 + $1.price * Double($1.quantity) }
     }
     
-    var finalTotal: Double {
-        subtotal + taxAmount + tipAmount
+    var taxTotal: Double {
+        subtotal * (taxAmount / 100)
     }
     
-    func totalForParticipant(_ participantId: UUID) -> Double {
-        let itemsTotal = items.reduce(0.0) { total, item in
-            if item.assignedTo.contains(participantId) {
-                return total + item.pricePerPerson * Double(item.quantity)
-            }
-            return total
-        }
+    var tipTotal: Double {
+        subtotal * (tipAmount / 100)
+    }
+    
+    var finalTotal: Double {
+        subtotal + taxTotal + tipTotal
+    }
+    
+    func totalForParticipant(_ participant: Participant) -> Double {
+        let assignedItems = items.filter { $0.assignedTo == participant.id }
+        let itemsTotal = assignedItems.reduce(0) { $0 + ($1.price * Double($1.quantity)) }
         
-        let participantCount = Double(participants.count)
-        guard participantCount > 0 else { return itemsTotal }
+        // Calculate share of tax and tip
+        let taxShare = (itemsTotal / subtotal) * taxTotal
+        let tipShare = (itemsTotal / subtotal) * tipTotal
         
-        let taxPerPerson = taxAmount / participantCount
-        let tipPerPerson = tipAmount / participantCount
-        
-        return itemsTotal + taxPerPerson + tipPerPerson
+        return itemsTotal + taxShare + tipShare
     }
 }
 
@@ -139,3 +179,4 @@ extension BillItem: Transferable {
         CodableRepresentation(contentType: .data)
     }
 }
+ 

@@ -7,20 +7,18 @@ struct DatabaseBill: Identifiable, Sendable {
     let id: UUID
     var items: [DatabaseBillItem]
     var participants: [DatabaseParticipant]
-    var totalAmount: Double
     var taxAmount: Double
     var tipAmount: Double
-    var createdAt: Date
+    var date: Date
     var updatedAt: Date
     
     init(from bill: Bill) {
         self.id = bill.id
         self.items = bill.items.map { DatabaseBillItem(from: $0) }
         self.participants = bill.participants.map { DatabaseParticipant(from: $0) }
-        self.totalAmount = bill.totalAmount
         self.taxAmount = bill.taxAmount
         self.tipAmount = bill.tipAmount
-        self.createdAt = bill.createdAt
+        self.date = bill.date
         self.updatedAt = Date()
     }
     
@@ -29,10 +27,9 @@ struct DatabaseBill: Identifiable, Sendable {
             id: id,
             items: items.map { $0.toBillItem() },
             participants: participants.map { $0.toParticipant() },
-            totalAmount: totalAmount,
             taxAmount: taxAmount,
             tipAmount: tipAmount,
-            createdAt: createdAt
+            date: date
         )
     }
 }
@@ -42,10 +39,9 @@ extension DatabaseBill: Codable {
         case id
         case items
         case participants
-        case totalAmount = "total_amount"
         case taxAmount = "tax_amount"
         case tipAmount = "tip_amount"
-        case createdAt = "created_at"
+        case date
         case updatedAt = "updated_at"
     }
     
@@ -54,20 +50,20 @@ extension DatabaseBill: Codable {
         id = try container.decode(UUID.self, forKey: .id)
         items = try container.decodeIfPresent([DatabaseBillItem].self, forKey: .items) ?? []
         participants = try container.decodeIfPresent([DatabaseParticipant].self, forKey: .participants) ?? []
-        totalAmount = try container.decodeIfPresent(Double.self, forKey: .totalAmount) ?? 0.0
         taxAmount = try container.decodeIfPresent(Double.self, forKey: .taxAmount) ?? 0.0
         tipAmount = try container.decodeIfPresent(Double.self, forKey: .tipAmount) ?? 0.0
-        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Date()
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
     }
     
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
-        try container.encode(totalAmount, forKey: .totalAmount)
+        try container.encode(items, forKey: .items)
+        try container.encode(participants, forKey: .participants)
         try container.encode(taxAmount, forKey: .taxAmount)
         try container.encode(tipAmount, forKey: .tipAmount)
-        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(date, forKey: .date)
         try container.encode(updatedAt, forKey: .updatedAt)
     }
 }
@@ -77,7 +73,7 @@ struct DatabaseBillItem: Identifiable, Sendable {
     var name: String
     var price: Double
     var quantity: Int
-    var assignedTo: [UUID]
+    var assignedTo: UUID?
     var isManuallyAssigned: Bool
     var billId: UUID
     
@@ -120,7 +116,7 @@ extension DatabaseBillItem: Codable {
         name = try container.decode(String.self, forKey: .name)
         price = try container.decode(Double.self, forKey: .price)
         quantity = try container.decodeIfPresent(Int.self, forKey: .quantity) ?? 1
-        assignedTo = try container.decodeIfPresent([UUID].self, forKey: .assignedTo) ?? []
+        assignedTo = try container.decodeIfPresent(UUID.self, forKey: .assignedTo)
         isManuallyAssigned = try container.decodeIfPresent(Bool.self, forKey: .isManuallyAssigned) ?? false
         billId = try container.decode(UUID.self, forKey: .billId)
     }
