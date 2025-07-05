@@ -3,18 +3,23 @@ import VisionKit
 import Vision
 import Combine
 
+@MainActor
 class BillViewModel: ObservableObject {
-    @Published var bill = Bill()
+    @Published var bill: Bill
     @Published var isScanning = false
     @Published var scanningProgress: Double = 0
     @Published var showingScanningError = false
     @Published var scanningErrorMessage = ""
     @Published var settings = AppSettings()
     @Published var savedBills: [Bill] = []
+    @Published var splitError: String?
+    @Published var showingSplitError = false
+    @Published var showingSplitResult = false
     
     private let storageService = StorageService.shared
     
-    init() {
+    init(bill: Bill = Bill()) {
+        self.bill = bill
         loadSettings()
         loadSavedBills()
     }
@@ -24,13 +29,15 @@ class BillViewModel: ObservableObject {
     func loadSettings() {
         settings = storageService.loadSettings()
         
-        // Apply default settings to new bill
-        bill.taxAmount = settings.defaultTaxPercentage
-        bill.tipAmount = settings.defaultTipPercentage
-        
-        // Add default participants if bill is new
-        if bill.participants.isEmpty {
-            bill.participants = settings.defaultParticipants
+        // Apply default settings to new bill if it's empty
+        if bill.items.isEmpty {
+            bill.taxAmount = settings.defaultTaxPercentage
+            bill.tipAmount = settings.defaultTipPercentage
+            
+            // Add default participants if bill is new
+            if bill.participants.isEmpty {
+                bill.participants = settings.defaultParticipants
+            }
         }
     }
     
@@ -121,10 +128,6 @@ class BillViewModel: ObservableObject {
         isScanning = false
         scanningProgress = 1.0
         
-        // Apply default tax and tip if enabled
-        bill.taxAmount = settings.defaultTaxPercentage
-        bill.tipAmount = settings.defaultTipPercentage
-        
         // Auto-save if enabled
         if settings.saveHistory {
             saveBill()
@@ -208,59 +211,56 @@ class BillViewModel: ObservableObject {
     
     func removeParticipant(_ participant: Participant) {
         // Unassign items
-        for index in bill.items.indices {
-            if bill.items[index].assignedTo == participant.id {
-                bill.items[index].assignedTo = nil
+        var updatedItems = bill.items
+        for index in updatedItems.indices {
+            if updatedItems[index].assignedTo == participant.id {
+                updatedItems[index].assignedTo = nil
             }
         }
+        bill.items = updatedItems
         
         // Remove participant
         bill.participants.removeAll { $0.id == participant.id }
     }
     
-    func assignItem(_ item: BillItem, to participant: Participant) {
+    func assignItem(_ item: BillItem, to participant: Participant?) {
         if let index = bill.items.firstIndex(where: { $0.id == item.id }) {
-            bill.items[index].assignedTo = participant.id
+            var updatedItems = bill.items
+            updatedItems[index].assignedTo = participant?.id
+            bill.items = updatedItems
         }
     }
     
     func unassignItem(_ item: BillItem) {
         if let index = bill.items.firstIndex(where: { $0.id == item.id }) {
-            bill.items[index].assignedTo = nil
+            var updatedItems = bill.items
+            updatedItems[index].assignedTo = nil
+            bill.items = updatedItems
         }
     }
     
-    func updateTax(_ tax: Double) {
-        bill.taxAmount = tax
+    func updateTaxAmount(_ tax: Double) {
+        if tax >= 0 && tax <= 100 {
+            bill.taxAmount = tax
+            objectWillChange.send()
+        }
     }
     
-    func updateTip(_ tip: Double) {
-        bill.tipAmount = tip
+    func updateTipAmount(_ tip: Double) {
+        if tip >= 0 && tip <= 100 {
+            bill.tipAmount = tip
+            objectWillChange.send()
+        }
     }
     
     // MARK: - Calculations
     
     func totalForParticipant(_ participant: Participant) -> Double {
-        let assignedItems = bill.items.filter { $0.assignedTo == participant.id }
-        let itemsTotal = assignedItems.reduce(0) { $0 + $1.price }
-        
-        // Calculate share of tax and tip
-        let taxShare = (itemsTotal / bill.subtotal) * bill.taxAmount
-        let tipShare = (itemsTotal / bill.subtotal) * bill.tipAmount
-        
-        let total = itemsTotal + taxShare + tipShare
-        
-        // Apply rounding if configured
-        switch settings.roundingMode {
-        case .up:
-            return ceil(total)
-        case .down:
-            return floor(total)
-        case .nearest:
-            return round(total)
-        case .none:
-            return total
-        }
+        bill.totalForParticipant(participant)
+    }
+    
+    func itemsForParticipant(_ participant: Participant) -> [BillItem] {
+        bill.items.filter { $0.assignedTo == participant.id }
     }
     
     func resetBill() {
@@ -273,11 +273,53 @@ class BillViewModel: ObservableObject {
     
     // MARK: - Currency Formatting
     
-    func formatCurrency(_ amount: Double) -> String {
+    private static let currencyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = settings.currencyCode
-        
-        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+        formatter.locale = Locale.current
+        return formatter
+    }()
+    
+    func formatCurrency(_ amount: Double) -> String {
+        Self.currencyFormatter.string(from: NSNumber(value: amount)) ?? "$0.00"
+    }
+    
+    // MARK: - Split Validation
+    
+    /// Returns `nil` if the bill can be split; otherwise, returns a user-friendly error message.
+    private func validateSplit() -> String? {
+        // Must have items & participants
+        guard !bill.items.isEmpty else { return "No items to split" }
+        guard !bill.participants.isEmpty else { return "No participants to split between" }
+
+        // All items must be assigned
+        let unassignedItems = bill.items.filter { $0.assignedTo == nil }
+        guard unassignedItems.isEmpty else { return "Some items are not assigned to anyone" }
+
+        // Participants without items are allowed – they'll simply owe $0
+        return nil // No error means we can split
+    }
+    
+    var canSplit: Bool {
+        validateSplit() == nil
+    }
+    
+    // MARK: - Split Actions
+    
+    func splitBill() {
+        if let error = validateSplit() {
+            // Not ready – surface error once, outside of a view update cycle
+            splitError = error
+            showingSplitError = true
+            return
+        }
+
+        splitError = nil
+        showingSplitError = false
+        showingSplitResult = true
+    }
+    
+    func updateBill(_ newBill: Bill) {
+        bill = newBill
     }
 } 

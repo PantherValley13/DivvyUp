@@ -1,5 +1,21 @@
 import SwiftUI
 
+fileprivate func colorNameForIndex(_ index: Int) -> String {
+    switch index {
+    case 0: return "blue"
+    case 1: return "green"
+    case 2: return "orange"
+    case 3: return "purple"
+    case 4: return "pink"
+    case 5: return "red"
+    case 6: return "yellow"
+    case 7: return "teal"
+    case 8: return "indigo"
+    case 9: return "gray"
+    default: return "blue"
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var billViewModel: BillViewModel
     @Environment(\.dismiss) private var dismiss
@@ -119,7 +135,16 @@ struct DefaultParticipantsView: View {
     @State private var selectedColorIndex = 0
     
     private let participantColors: [Color] = [
-        .blue, .green, .orange, .purple, .pink, .red, .yellow, .mint, .teal, .indigo
+        Color(.systemBlue),
+        Color(.systemGreen),
+        Color(.systemOrange),
+        Color(.systemPurple),
+        Color(.systemPink),
+        Color(.systemRed),
+        Color(.systemYellow),
+        Color(.systemTeal),
+        Color(.systemIndigo),
+        Color(.systemGray)
     ]
     
     var body: some View {
@@ -179,7 +204,7 @@ struct DefaultParticipantsView: View {
     }
     
     private func addParticipant() {
-        let colorName = participantColors[selectedColorIndex].description
+        let colorName = colorNameForIndex(selectedColorIndex)
         let participant = Participant(name: newParticipantName, colorName: colorName)
         participants.append(participant)
         newParticipantName = ""

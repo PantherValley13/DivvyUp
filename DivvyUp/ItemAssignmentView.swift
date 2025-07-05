@@ -3,7 +3,8 @@ import UniformTypeIdentifiers
 
 // MARK: - Item Assignment View
 struct ItemAssignmentView: View {
-    @Binding var bill: Bill
+    @EnvironmentObject private var billViewModel: BillViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var draggedItem: BillItem?
     @State private var showingAddParticipant = false
     @State private var newParticipantName = ""
@@ -11,47 +12,72 @@ struct ItemAssignmentView: View {
     @State private var showingSplitResults = false
     
     private let participantColors: [Color] = [
-        .blue, .green, .orange, .purple, .pink, .red, .yellow, .mint, .teal, .indigo
+        Color(.systemBlue),
+        Color(.systemGreen),
+        Color(.systemOrange),
+        Color(.systemPurple),
+        Color(.systemPink),
+        Color(.systemRed),
+        Color(.systemYellow),
+        Color(.systemTeal),
+        Color(.systemIndigo),
+        Color(.systemGray)
     ]
     
     // MARK: - Computed Properties
     
     private var unassignedItems: [BillItem] {
-        bill.items.filter { $0.assignedTo == nil }
+        billViewModel.bill.items.filter { $0.assignedTo == nil }
     }
     
     // MARK: - Helper Methods
     
     private func itemsForParticipant(_ participant: Participant) -> [BillItem] {
-        bill.items.filter { $0.assignedTo == participant.id }
+        billViewModel.bill.items.filter { $0.assignedTo == participant.id }
     }
     
     private func participantName(for id: UUID) -> String {
-        bill.participants.first { $0.id == id }?.name ?? "Unknown"
+        billViewModel.bill.participants.first { $0.id == id }?.name ?? "Unknown"
     }
     
     private func totalForParticipant(_ participant: Participant) -> Double {
-        bill.totalForParticipant(participant)
+        billViewModel.bill.totalForParticipant(participant)
     }
     
     private func removeParticipant(_ participant: Participant) {
         // Unassign items before removing participant
-        for index in bill.items.indices {
-            if bill.items[index].assignedTo == participant.id {
-                bill.items[index].assignedTo = nil
+        for index in billViewModel.bill.items.indices {
+            if billViewModel.bill.items[index].assignedTo == participant.id {
+                billViewModel.bill.items[index].assignedTo = nil
             }
         }
-        bill.participants.removeAll { $0.id == participant.id }
+        billViewModel.bill.participants.removeAll { $0.id == participant.id }
+    }
+    
+    private func colorNameForIndex(_ index: Int) -> String {
+        switch index {
+        case 0: return "blue"
+        case 1: return "green"
+        case 2: return "orange"
+        case 3: return "purple"
+        case 4: return "pink"
+        case 5: return "red"
+        case 6: return "yellow"
+        case 7: return "teal"
+        case 8: return "indigo"
+        case 9: return "gray"
+        default: return "blue"
+        }
     }
     
     private func addParticipant() {
         guard !newParticipantName.isEmpty else { return }
         
-        let colorName = participantColors[selectedColorIndex].description
+        let colorName = colorNameForIndex(selectedColorIndex)
         let participant = Participant(name: newParticipantName, colorName: colorName)
         
         withAnimation {
-            bill.participants.append(participant)
+            billViewModel.bill.participants.append(participant)
         }
         
         // Reset form
@@ -62,62 +88,91 @@ struct ItemAssignmentView: View {
     // MARK: - Body
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.spacing) {
-                // Participants Section
-                ContentCard(title: "Participants", icon: "person.2") {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: Theme.spacing) {
                     participantsSection
-                }
-                
-                // Unassigned Items Section
-                if !unassignedItems.isEmpty {
-                    ContentCard(title: "Unassigned Items", icon: "tray") {
-                        unassignedItemsSection
-                    }
-                }
-                
-                // Assigned Items Section
-                ForEach(bill.participants) { participant in
-                    if !itemsForParticipant(participant).isEmpty {
-                        ContentCard(
-                            title: participant.name,
-                            icon: "person.circle"
-                        ) {
-                            participantItemsSection(participant)
+                    
+                    // Tax and Tip Section
+                    ContentCard(title: "Tax & Tip", icon: "percent") {
+                        VStack(spacing: Theme.spacing) {
+                            HStack {
+                                Text("Tax")
+                                Spacer()
+                                TextField("Tax %", value: Binding(
+                                    get: { billViewModel.bill.taxAmount },
+                                    set: { billViewModel.updateTaxAmount($0) }
+                                ), format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                Text("%")
+                            }
+                            
+                            HStack {
+                                Text("Tip")
+                                Spacer()
+                                TextField("Tip %", value: Binding(
+                                    get: { billViewModel.bill.tipAmount },
+                                    set: { billViewModel.updateTipAmount($0) }
+                                ), format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                Text("%")
+                            }
                         }
                     }
+                    
+                    // Items Section
+                    ContentCard(title: "Items", icon: "list.bullet") {
+                        ForEach(billViewModel.bill.items) { item in
+                            itemRow(item)
+                        }
+                    }
+                    
+                    // Split Button
+                    Button {
+                        if billViewModel.canSplit {
+                            billViewModel.splitBill()
+                            dismiss()
+                        } else {
+                            billViewModel.showingSplitError = true
+                        }
+                    } label: {
+                        if billViewModel.canSplit {
+                            Label("Split Bill", systemImage: "arrow.triangle.branch")
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Label("Cannot Split Yet", systemImage: "exclamationmark.triangle")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!billViewModel.canSplit)
                 }
-                
-                // Summary Section
-                if !bill.participants.isEmpty {
-                    ContentCard(title: "Summary", icon: "chart.pie") {
-                        summarySection
+                .padding()
+            }
+            .navigationTitle("Assign Items")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
                     }
                 }
             }
-            .padding()
-        }
-        .background(Theme.backgroundGradient)
-        .sheet(isPresented: $showingAddParticipant) {
-            addParticipantSheet
-        }
-        .navigationDestination(isPresented: $showingSplitResults) {
-            SplitResultView()
-        }
-        .onChange(of: bill.items) { _ in
-            // Check if all items are assigned
-            if !unassignedItems.isEmpty && bill.participants.isEmpty {
-                showingSplitResults = false
-            } else if unassignedItems.isEmpty && !bill.participants.isEmpty {
-                showingSplitResults = true
+            .alert("Cannot Split Bill", isPresented: $billViewModel.showingSplitError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(billViewModel.splitError ?? "Unknown error")
             }
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Split") {
-                    showingSplitResults = true
-                }
-                .disabled(unassignedItems.isEmpty || bill.participants.isEmpty)
+            .sheet(isPresented: $showingAddParticipant, onDismiss: {
+                // Reset form on dismiss
+                newParticipantName = ""
+                selectedColorIndex = 0
+            }) {
+                addParticipantSheet
             }
         }
     }
@@ -125,11 +180,11 @@ struct ItemAssignmentView: View {
     // MARK: - View Components
     
     private var participantsSection: some View {
-        VStack(spacing: Theme.spacing) {
+        VStack {
             // Participant list
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.spacing) {
-                    ForEach(bill.participants) { participant in
+                    ForEach(billViewModel.bill.participants) { participant in
                         participantCard(participant)
                     }
                     
@@ -149,7 +204,7 @@ struct ItemAssignmentView: View {
                 .padding(.horizontal, 4)
             }
             
-            if bill.participants.isEmpty {
+            if billViewModel.bill.participants.isEmpty {
                 EmptyStateView(
                     icon: "person.2",
                     title: "No Participants",
@@ -177,7 +232,7 @@ struct ItemAssignmentView: View {
     private func participantCard(_ participant: Participant) -> some View {
         VStack(spacing: 8) {
             Circle()
-                .fill(Color(participant.colorName))
+                .fill(participant.color)
                 .frame(width: 40, height: 40)
                 .overlay(
                     Text(participant.name.prefix(1).uppercased())
@@ -197,7 +252,7 @@ struct ItemAssignmentView: View {
         .frame(width: 80, height: 100)
         .background(Color(.systemBackground))
         .cornerRadius(Theme.cornerRadius)
-        .shadow(color: Color(participant.colorName).opacity(0.3), radius: 5, x: 0, y: 2)
+        .shadow(color: participant.color.opacity(0.3), radius: 5, x: 0, y: 2)
         .contextMenu {
             Button(role: .destructive) {
                 withAnimation {
@@ -219,44 +274,32 @@ struct ItemAssignmentView: View {
                     }
             }
         }
-        .onDrop(of: [.text], delegate: ParticipantDropDelegate(
-            bill: $bill,
-            participant: participant,
-            draggedItem: $draggedItem
-        ))
     }
     
     private func itemRow(_ item: BillItem) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading) {
                 Text(item.name)
+                    .font(.headline)
+                Text(billViewModel.formatCurrency(item.price))
                     .font(.subheadline)
-                
-                if let assignedTo = item.assignedTo {
-                    Text("Assigned to \(participantName(for: assignedTo))")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            Text("$\(item.price, specifier: "%.2f")")
-                .font(.subheadline)
-                .bold()
-                .foregroundColor(Theme.success)
+            AssignmentMenu(item: item)
         }
-        .padding()
-        .background(Theme.secondary)
-        .cornerRadius(Theme.cornerRadius)
+        .padding(.vertical, 4)
+        .id("\(item.id)-\(item.assignedTo?.uuidString ?? "none")") // Force view refresh when assignment changes
     }
     
     private var summarySection: some View {
         VStack(spacing: Theme.spacing) {
-            ForEach(bill.participants) { participant in
+            ForEach(billViewModel.bill.participants) { participant in
                 HStack {
                     Circle()
-                        .fill(Color(participant.colorName))
+                        .fill(participant.color)
                         .frame(width: 24, height: 24)
                         .overlay(
                             Text(participant.name.prefix(1).uppercased())
@@ -285,7 +328,7 @@ struct ItemAssignmentView: View {
                 
                 Spacer()
                 
-                Text("$\(bill.subtotal, specifier: "%.2f")")
+                Text("$\(billViewModel.bill.subtotal, specifier: "%.2f")")
                     .font(.headline)
                     .bold()
                     .foregroundColor(Theme.success)
@@ -430,5 +473,56 @@ struct AddParticipantView: View {
     }
 }
 
+struct AssignmentMenu: View {
+    let item: BillItem
+    @EnvironmentObject private var billViewModel: BillViewModel
+    
+    var body: some View {
+        Menu {
+            ForEach(billViewModel.bill.participants) { participant in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        billViewModel.assignItem(item, to: participant)
+                    }
+                } label: {
+                    if item.assignedTo == participant.id {
+                        Label(participant.name, systemImage: "checkmark")
+                    } else {
+                        Text(participant.name)
+                    }
+                }
+            }
+            
+            if item.assignedTo != nil {
+                Divider()
+                Button(role: .destructive) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        billViewModel.assignItem(item, to: nil)
+                    }
+                } label: {
+                    Label("Unassign", systemImage: "person.slash")
+                }
+            }
+        } label: {
+            Group {
+                if let assignedTo = item.assignedTo,
+                   let participant = billViewModel.bill.participants.first(where: { $0.id == assignedTo }) {
+                    ParticipantBadge(participant: participant)
+                        .transition(.scale.combined(with: .opacity))
+                } else {
+                    Image(systemName: "person.badge.plus")
+                        .foregroundColor(.secondary)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .id("\(item.id)-\(item.assignedTo?.uuidString ?? "none")-menu") // Force menu button refresh
+        }
+    }
+}
+
 
  
+#Preview {
+
+}
+

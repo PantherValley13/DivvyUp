@@ -10,7 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var ocrService = OCRService()
     @StateObject private var supabaseService = SupabaseService()
-    @State private var currentBill = Bill()
+    @StateObject private var billViewModel = BillViewModel()
     @State private var selectedTab = 0
     @State private var showingCameraOCR = false
     @State private var savedBills: [Bill] = []
@@ -46,6 +46,15 @@ struct ContentView: View {
                     Label("History", systemImage: "clock")
                 }
                 .tag(4)
+        }
+        .environmentObject(billViewModel)
+        .onChange(of: ocrService.extractedItems) { items in
+            let newBill = Bill(
+                items: items,
+                participants: billViewModel.bill.participants,
+                date: Date()
+            )
+            billViewModel.updateBill(newBill)
         }
         .onAppear {
             Theme.configureNavigationBarAppearance()
@@ -118,7 +127,7 @@ struct ContentView: View {
     
     private var currentBillPreview: some View {
         Group {
-            if currentBill.items.isEmpty {
+            if billViewModel.bill.items.isEmpty {
                 EmptyStateView(
                     icon: "receipt",
                     title: "No items yet",
@@ -128,7 +137,7 @@ struct ContentView: View {
                 )
             } else {
                 VStack(spacing: Theme.spacing) {
-                    ForEach(currentBill.items.prefix(3)) { item in
+                    ForEach(billViewModel.bill.items.prefix(3)) { item in
                         HStack {
                             Text(item.name)
                                 .font(.subheadline)
@@ -143,8 +152,8 @@ struct ContentView: View {
                         }
                     }
                     
-                    if currentBill.items.count > 3 {
-                        Text("... and \(currentBill.items.count - 3) more items")
+                    if billViewModel.bill.items.count > 3 {
+                        Text("... and \(billViewModel.bill.items.count - 3) more items")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -157,7 +166,7 @@ struct ContentView: View {
                         
                         Spacer()
                         
-                        Text("$\(currentBill.subtotal, specifier: "%.2f")")
+                        Text("$\(billViewModel.bill.subtotal, specifier: "%.2f")")
                             .font(.headline)
                             .bold()
                             .foregroundColor(Theme.success)
@@ -173,7 +182,7 @@ struct ContentView: View {
                         
                         Button("Clear") {
                             withAnimation {
-                                currentBill = Bill()
+                                billViewModel.bill = Bill()
                                 ocrService.clearItems()
                             }
                         }
@@ -192,8 +201,8 @@ struct ContentView: View {
                     icon: "text.viewfinder",
                     title: "No recent scans",
                     message: "Your recent OCR scans will appear here",
-                    actionTitle: "",
-                    action: {}
+                    actionTitle: "Start Scanning",
+                    action: { showingCameraOCR = true }
                 )
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -290,7 +299,7 @@ struct ContentView: View {
         }
         
         do {
-            try await supabaseService.saveBill(currentBill)
+            try await supabaseService.saveBill(billViewModel.bill)
             await loadSavedBills()
         } catch {
             print("Error saving bill: \(error)")
@@ -314,32 +323,18 @@ struct ContentView: View {
     }
     
     private var assignmentTab: some View {
-        if currentBill.items.isEmpty {
+        if billViewModel.bill.items.isEmpty {
             AnyView(
-                VStack(spacing: 20) {
-                    Image(systemName: "person.2.rectangle.stack")
-                        .font(.system(size: 64))
-                        .foregroundColor(.gray)
-                    
-                    Text("No Items to Assign")
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                    
-                    Text("Start by scanning a receipt or uploading a photo to extract items for assignment")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
-                    Button("Scan Receipt") {
-                        selectedTab = 1
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-                .padding()
+                EmptyStateView(
+                    icon: "person.2.rectangle.stack",
+                    title: "No Items to Assign",
+                    message: "Start by scanning a receipt or uploading a photo to extract items for assignment",
+                    actionTitle: "Scan Receipt",
+                    action: { selectedTab = 1 }
+                )
             )
         } else {
-            AnyView(ItemAssignmentView(bill: $currentBill))
+            AnyView(ItemAssignmentView())
         }
     }
     
@@ -368,23 +363,13 @@ struct ContentView: View {
                 
                 // Configuration status
                 if !SupabaseConfig.isConfigured {
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.orange)
-                        
-                        Text("Supabase Not Configured")
-                            .font(.headline)
-                            .foregroundColor(.orange)
-                        
-                        Text("Update SupabaseConfig.swift with your project credentials to enable database features")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(12)
+                    EmptyStateView(
+                        icon: "exclamationmark.triangle",
+                        title: "Supabase Not Configured",
+                        message: "Update SupabaseConfig.swift with your project credentials to enable database features",
+                        actionTitle: "Learn More",
+                        action: { /* Add documentation link action here */ }
+                    )
                     .padding(.horizontal)
                     
                     Spacer()
@@ -393,20 +378,13 @@ struct ContentView: View {
                         .padding()
                     Spacer()
                 } else if savedBills.isEmpty {
-                    // Empty state
-                    VStack(spacing: 20) {
-                        Image(systemName: "tray")
-                            .font(.system(size: 64))
-                            .foregroundColor(.gray)
-                        
-                        Text("No Saved Bills")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        
-                        Text("Bills you save will appear here")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
+                    EmptyStateView(
+                        icon: "tray",
+                        title: "No Saved Bills",
+                        message: "Bills you save will appear here",
+                        actionTitle: "Create New Bill",
+                        action: { selectedTab = 1 }
+                    )
                     .padding()
                     
                     Spacer()
@@ -418,7 +396,7 @@ struct ContentView: View {
                                 BillHistoryRowView(
                                     bill: bill,
                                     onLoad: { bill in
-                                        currentBill = bill
+                                        billViewModel.bill = bill
                                         selectedTab = 0 // Switch to home tab
                                     },
                                     onDelete: { bill in

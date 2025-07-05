@@ -109,7 +109,7 @@ struct ParticipantTag: View {
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(Color(participant.colorName))
+                .fill(participant.color)
                 .frame(width: 8, height: 8)
             
             Text(participant.name)

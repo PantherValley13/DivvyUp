@@ -16,10 +16,9 @@ struct BillScannerView: View {
                     icon: "doc.text.viewfinder",
                     title: "No Bill Scanned",
                     message: "Scan a receipt to start splitting the bill with your friends",
-                    actionTitle: "Scan Receipt"
-                ) {
-                    showingScanner = true
-                }
+                    actionTitle: "Scan Receipt",
+                    action: { showingScanner = true }
+                )
                 .padding()
             } else {
                 // Bill Preview
@@ -34,7 +33,7 @@ struct BillScannerView: View {
                                     
                                     Spacer()
                                     
-                                    Text("$\(item.price, specifier: "%.2f")")
+                                    Text(billViewModel.formatCurrency(item.price))
                                         .font(.subheadline)
                                         .bold()
                                         .foregroundColor(Theme.success)
@@ -50,7 +49,10 @@ struct BillScannerView: View {
                                     HStack {
                                         Text("Tax")
                                         Spacer()
-                                        TextField("Tax %", value: $billViewModel.bill.taxAmount, format: .number)
+                                        TextField("Tax %", value: Binding(
+                                            get: { billViewModel.bill.taxAmount },
+                                            set: { billViewModel.updateTaxAmount($0) }
+                                        ), format: .number)
                                             .textFieldStyle(.roundedBorder)
                                             .frame(width: 100)
                                             .keyboardType(.decimalPad)
@@ -59,7 +61,10 @@ struct BillScannerView: View {
                                     HStack {
                                         Text("Tip")
                                         Spacer()
-                                        TextField("Tip %", value: $billViewModel.bill.tipAmount, format: .number)
+                                        TextField("Tip %", value: Binding(
+                                            get: { billViewModel.bill.tipAmount },
+                                            set: { billViewModel.updateTipAmount($0) }
+                                        ), format: .number)
                                             .textFieldStyle(.roundedBorder)
                                             .frame(width: 100)
                                             .keyboardType(.decimalPad)
@@ -71,7 +76,7 @@ struct BillScannerView: View {
                                         Text("Total")
                                             .font(.headline)
                                         Spacer()
-                                        Text("$\(billViewModel.bill.finalTotal, specifier: "%.2f")")
+                                        Text(billViewModel.formatCurrency(billViewModel.bill.finalTotal))
                                             .font(.headline)
                                             .foregroundColor(Theme.success)
                                     }
@@ -136,11 +141,12 @@ struct BillScannerView: View {
         }
         .sheet(isPresented: $showingAssignment) {
             NavigationView {
-                ItemAssignmentView(bill: $billViewModel.bill)
+                ItemAssignmentView()
+                    .environmentObject(billViewModel)
                     .navigationTitle("Split Bill")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
+                        ToolbarItem(placement: .navigationBarLeading) {
                             Button("Done") {
                                 showingAssignment = false
                             }
@@ -148,8 +154,13 @@ struct BillScannerView: View {
                     }
             }
         }
+        .sheet(isPresented: $billViewModel.showingSplitResult) {
+            NavigationView {
+                SplitResultView(billViewModel: billViewModel)
+            }
+        }
         .alert("Scanning Error", isPresented: $billViewModel.showingScanningError) {
-            Button("OK", role: .cancel) {}
+            Button("OK", role: .cancel) { }
         } message: {
             Text(billViewModel.scanningErrorMessage)
         }
