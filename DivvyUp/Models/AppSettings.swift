@@ -1,7 +1,7 @@
 import Foundation
 
 struct AppSettings: Identifiable, Codable {
-    let id: UUID = UUID()
+    var id: UUID
     var defaultTipPercentage: Double
     var defaultTaxPercentage: Double
     var currencyCode: String
@@ -17,6 +17,7 @@ struct AppSettings: Identifiable, Codable {
     }
     
     init(
+        id: UUID? = nil,
         defaultTipPercentage: Double = 15.0,
         defaultTaxPercentage: Double = 8.0,
         currencyCode: String = "USD",
@@ -24,6 +25,7 @@ struct AppSettings: Identifiable, Codable {
         saveHistory: Bool = true,
         defaultParticipants: [Participant] = []
     ) {
+        self.id = id ?? UUID()
         self.defaultTipPercentage = defaultTipPercentage
         self.defaultTaxPercentage = defaultTaxPercentage
         self.currencyCode = currencyCode
